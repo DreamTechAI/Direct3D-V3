@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101214">
+  <title>Direct3D-V3 — Latent-Free Diffusion Transformers in the Native Voxel Domain</title>
+  <meta name="description" content="Direct3D-V3 generates high-resolution 3D meshes in the native voxel domain. Explore 14 interactive geometry comparisons from our SIGGRAPH Asia 2026 paper.">
+  <link rel="icon" href="site/mark.svg" type="image/svg+xml">
+  <link rel="preload" href="site/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="site/media/hero/69.webp" as="image">
+  <link rel="stylesheet" href="site/style.css">
+  <script type="module" src="site/app.js"></script>
+</head>
+<body>
+<svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+  <symbol id="cube" viewBox="0 0 32 32"><path d="m16 2 12 7v14l-12 7-12-7V9Z M4 9l12 7 12-7 M16 16v14 M10 5.5l12 7V19l-6 3.5-6-3.5v-7l12-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+  <symbol id="external" viewBox="0 0 24 24"><path d="M6 18 18 6M7 6h11v11"/></symbol>
+  <symbol id="down" viewBox="0 0 24 24"><path d="M12 4v15m-6-6 6 6 6-6"/></symbol>
+  <symbol id="left" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol>
+  <symbol id="right" viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></symbol>
+  <symbol id="pause" viewBox="0 0 24 24"><path d="M8.5 5.5v13m7-13v13" stroke-width="2.5"/></symbol>
+  <symbol id="play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="file" viewBox="0 0 24 24"><path d="M14 3H5v18h14V8l-5-5Z m0 0v6h5M8 13h8m-8 4h6"/></symbol>
+  <symbol id="github" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 .8a11.2 11.2 0 0 0-3.54 21.83c.56.1.77-.24.77-.54v-2.12c-3.14.68-3.8-1.33-3.8-1.33-.51-1.3-1.25-1.65-1.25-1.65-1.02-.7.08-.69.08-.69 1.13.08 1.73 1.16 1.73 1.16 1 .1.93 2.27 3.28 1.61.1-.73.4-1.22.72-1.5-2.5-.28-5.13-1.25-5.13-5.57 0-1.23.44-2.23 1.16-3.02-.11-.28-.5-1.43.11-2.98 0 0 .95-.3 3.08 1.15A10.75 10.75 0 0 1 12 6.77c.95 0 1.9.12 2.8.38 2.13-1.45 3.08-1.15 3.08-1.15.61 1.55.22 2.7.11 2.98.73.79 1.16 1.79 1.16 3.02 0 4.33-2.63 5.29-5.14 5.57.41.35.77 1.03.77 2.08v2.44c0 .3.2.65.78.54A11.2 11.2 0 0 0 12 .8Z"/></symbol>
+  <symbol id="rocket" viewBox="0 0 24 24"><path d="M10 16 8 14c.9-4.6 5.4-10 12.2-10.2.1 6.5-5.1 11.6-10.2 12.2Z M8.5 10.5H5.8l-3 3 5.2.5m5.5 1.5v2.7l-3 3L10 16 M6.7 17.6c-1.7-.1-2.9 1.3-3.2 3 1.8-.1 3.2-1.1 3.2-3Z"/><circle cx="15.8" cy="8.2" r="1.55"/></symbol>
+  <symbol id="expand" viewBox="0 0 24 24"><path d="M14 4h6v6m0-6-7 7M4 14v6h6m-6 0 7-7"/></symbol>
+  <symbol id="reset" viewBox="0 0 24 24"><path d="M4 5v6h6M4.6 10a8 8 0 1 1 .5 6"/></symbol>
+  <symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="copy" viewBox="0 0 24 24"><path d="M9 8h11v13H9zM5 16H3V3h11v2"/></symbol>
+</defs></svg>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar" id="top">
+  <div class="shell top-inner">
+    <a class="wordmark" href="#top" aria-label="Direct3D-V3 home"><svg><use href="#cube"/></svg><span>Direct3D<span class="brand-version">-V3</span></span></a>
+    <nav aria-label="Main navigation"><a href="#overview">Overview</a><a href="#comparisons">Comparisons</a><a href="#framework">Framework</a></nav>
+    <a class="nav-paper" href="https://dl.acm.org/doi/10.1145/3842524" target="_blank" rel="noopener"><span>Paper</span><svg class="ic"><use href="#external"/></svg></a>
+  </div>
+</header>
+<main id="main">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="shell hero-layout">
+      <div class="hero-copy">
+        <div class="venue"><span class="venue-line"></span>SIGGRAPH Asia 2026 <span class="venue-sep">/</span> ACM TOG</div>
+        <h1 id="hero-title">Direct3D<span>-V3</span></h1>
+        <p class="paper-title">Latent-Free Diffusion Transformers<br class="wide-only"> in the Native Voxel Domain</p>
+        <p class="hero-detail">High-resolution 3D generation directly on signed distance fields, at up to 1536<sup>3</sup> voxel resolution.</p>
+        <div class="hero-actions"><a class="btn btn-accent" href="#comparisons">Explore comparisons<svg class="ic"><use href="#down"/></svg></a><a class="btn btn-ghost" href="https://dl.acm.org/doi/10.1145/3842524" target="_blank" rel="noopener"><svg class="ic"><use href="#file"/></svg>Read paper</a></div>
+        <div class="resource-links" aria-label="Research resources">
+          <a href="site/media/paper/direct3d-v3.pdf" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#file"/></svg>PDF</a>
+          <a role="link" aria-disabled="true" title="Link coming soon"><img src="site/media/icons/arxiv.svg" alt="">arXiv</a>
+          <a href="https://github.com/DreamTechAI/Direct3D-V3" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#github"/></svg>GitHub</a>
+          <a role="link" aria-disabled="true" title="Link coming soon"><svg class="ic rocket" aria-hidden="true"><use href="#rocket"/></svg>Demo</a>
+          <a href="https://huggingface.co/wushuang98/Direct3D-V3" target="_blank" rel="noopener"><img src="site/media/icons/model.svg" alt="">Model</a>
+        </div>
+      </div>
+      <div class="hero-art" aria-label="Featured Direct3D-V3 clay renders">
+        <button class="hero-inspect" id="hero-inspect" type="button" aria-label="Enlarge the clay render of Armored rover">
+          <span class="hero-photo" id="hero-photos">
+            <img class="hero-mesh is-active" data-name="Armored rover" src="site/media/hero/69.webp" style="--detail-origin:50% 48%" alt="Three-quarter clay render of an armored rover" width="2048" height="2048" fetchpriority="high">
+            <img class="hero-mesh" data-name="Twin-barrel mech" src="site/media/hero/vis4.webp" style="--detail-origin:49% 30%" alt="Three-quarter clay render of a bipedal mech with twin shoulder tubes, exposed joints and a trailing cable" width="2048" height="2048" decoding="async" fetchpriority="low" aria-hidden="true">
+            <img class="hero-mesh" data-name="Steam walker" src="site/media/hero/vis5.webp" style="--detail-origin:50% 35%" alt="Three-quarter clay render of a caped rider on a mechanical walker with a cylindrical boiler" width="2048" height="2048" decoding="async" fetchpriority="low" aria-hidden="true">
+            <img class="hero-mesh" data-name="Woodland tower" src="site/media/hero/vis3.webp" style="--detail-origin:52% 41%" alt="Three-quarter clay render of a woodland tower with steep shingled roofs and small conifers" width="2048" height="2048" decoding="async" fetchpriority="low" aria-hidden="true">
+            <img class="hero-mesh" data-name="Armored walker" src="site/media/hero/11.webp" style="--detail-origin:53% 32%" alt="Three-quarter clay render of an armored walker" width="2048" height="2048" decoding="async" fetchpriority="low" aria-hidden="true">
+          </span>
+          <span class="hero-expand" aria-hidden="true"><svg class="ic"><use href="#expand"/></svg></span>
+        </button>
+        <div class="stage-foot">
+          <div class="stage-caption" id="hero-name" aria-live="off">Armored rover</div>
+          <div class="stage-controls">
+            <button class="hero-detail-toggle" id="hero-detail-toggle" type="button" aria-pressed="false" aria-controls="hero-photos">Detail view</button>
+            <div class="mini-arrows">
+              <button id="hero-prev" type="button" aria-label="Previous featured mesh"><svg class="ic"><use href="#left"/></svg></button>
+              <button id="hero-playback" type="button" aria-label="Pause slideshow" title="Pause slideshow"><svg class="ic"><use href="#pause"/></svg></button>
+              <button id="hero-next" type="button" aria-label="Next featured mesh"><svg class="ic"><use href="#right"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="credits" aria-label="Authors and affiliations"><div class="shell credit-layout">
+      <p class="authors"><span><a href="https://shuangw98.github.io/" target="_blank" rel="noopener">Shuang Wu</a><sup>1,2</sup></span><span><a href="https://big-pie-milk-cow.github.io/" target="_blank" rel="noopener">Jiachen Qian</a><sup>3,2</sup></span><span><a href="https://linyou.github.io/" target="_blank" rel="noopener">Youtian Lin</a><sup>1</sup></span><span><a href="https://scholar.google.com/citations?user=nWT4vFcAAAAJ" target="_blank" rel="noopener">Feihu Zhang</a><sup>2</sup></span><span><a href="https://eng.ox.ac.uk/people/philip-torr" target="_blank" rel="noopener">Philip Torr</a><sup>4</sup></span><span><a href="https://yoyo000.github.io/" target="_blank" rel="noopener">Yao Yao</a><sup>1,†</sup></span><span><a href="https://cite.nju.edu.cn/People/Faculty/20190621/i5054.html" target="_blank" rel="noopener">Xun Cao</a><sup>1,†</sup></span></p>
+      <p class="affiliations"><span><sup>1</sup> Nanjing University</span><span><sup>2</sup> DreamTech</span><span><sup>3</sup> The University of Hong Kong</span><span><sup>4</sup> University of Oxford</span><span><sup>†</sup> Corresponding authors</span></p>
+  </div></section>
+  <section class="overview light" id="overview" aria-labelledby="overview-title"><div class="shell overview-layout">
+    <div class="overview-copy">
+      <p class="eyebrow"><span></span>Overview</p>
+      <h2 id="overview-title">Diffusion Transformers<br> in Voxel Space<span class="accent-dot">.</span></h2>
+      <p>Direct3D-V3 learns to generate geometry directly on raw signed distance fields. The patch-level DiT models coarse shape semantics, while the voxel-level DiT restores fine-grained geometric detail.</p>
+      <button class="text-btn" id="abstract-open" type="button">Read abstract<svg class="ic"><use href="#arrow"/></svg></button>
+    </div>
+    <figure class="teaser-frame"><button class="figure-open" type="button" id="teaser-open" aria-label="Enlarge the paper teaser"><img src="site/media/paper/teaser.webp" width="1920" height="1080" alt="A collection of generated 3D characters, creatures, vehicles and architecture in an outdoor scene" loading="lazy"><span class="expand-icon"><svg class="ic"><use href="#expand"/></svg></span></button><figcaption>Image-conditioned meshes generated by Direct3D-V3.</figcaption></figure>
+  </div></section>
+  <section class="comparisons" id="comparisons" aria-labelledby="comparisons-title"><div class="shell">
+    <p class="eyebrow on-dark"><span></span>Interactive results</p>
+    <div class="section-heading"><div><h2 id="comparisons-title">Geometry explorer<span class="lime-dot">.</span></h2><p>Compare six front-view renders against the RGB and normal inputs. Enlarge a preview to inspect surface detail, or load the full-resolution mesh to orbit and zoom.</p></div><span class="section-count mono">14 cases</span></div>
+    <div class="case-strip" id="case-strip" aria-label="Choose a comparison case"></div>
+    <div class="case-bar"><h3 id="case-name">Serpent guardian</h3>
+      <div class="case-buttons"><button class="btn small secondary" id="reset-view" type="button" hidden><svg class="ic"><use href="#reset"/></svg>Front view</button><button class="btn small load-all" id="load-all" type="button"><svg class="ico-cube"><use href="#cube"/></svg><span>Load all 3D</span></button><div class="case-arrows"><button type="button" id="case-prev" aria-label="Previous case"><svg class="ic"><use href="#left"/></svg></button><button type="button" id="case-next" aria-label="Next case"><svg class="ic"><use href="#right"/></svg></button></div></div>
+    </div>
+    <p class="comparison-note"><small>Direct3D-V3 and Hi3DV1.0 use the same coarse model.</small></p>
+    <div class="models" id="models" aria-label="Input image and method comparison"></div>
+    <p id="compare-status" class="compare-status" role="status">Static previews · Orthographic front view</p>
+    <noscript><p>Enable JavaScript to select cases and load interactive meshes.</p></noscript>
+  </div></section>
+  <section class="method light" id="framework" aria-labelledby="method-title"><div class="shell">
+    <p class="eyebrow"><span></span>Method</p>
+    <div class="method-intro"><h2 id="method-title">Framework<span class="accent-dot">.</span></h2><p>Direct3D-V3 removes the VAE and performs training and sampling directly in signed distance field (SDF) voxel space, scaling to a resolution of 1536<sup>3</sup>.</p></div>
+    <div class="method-row">
+      <figure class="paper-figure framework-frame"><button class="figure-open" id="framework-open" type="button" aria-label="Enlarge the framework diagram"><img src="site/media/paper/framework.webp" loading="lazy" width="2600" height="1284" alt="Training and inference pipelines showing surface patch selection, SDF denoising, image conditioning and camera prediction"><span class="expand-icon"><svg class="ic"><use href="#expand"/></svg></span></button><figcaption>Generation framework</figcaption></figure>
+      <div class="method-copy"><h3>Surface Patch Tokenization</h3><p>Only a small fraction of a high-resolution SDF grid lies near the surface. To exploit this sparsity, we partition the grid into non-overlapping patches and retain those that intersect a coarse mesh. Each retained patch contributes one token containing its raw SDF values. We train the DiT directly on this sparse token sequence.</p>
+      <h3>Dual-granularity DiT</h3><p>The patch-level DiT combines surface patch tokens with features from the input image. Each patch feature then modulates its voxel tokens at every block of the voxel-level DiT, guiding the prediction of individual SDF values.</p></div>
+    </div>
+    <div class="method-row architecture-row">
+      <figure class="paper-figure architecture-frame"><button class="figure-open" id="architecture-open" type="button" aria-label="Enlarge the dual-granularity model architecture"><img src="site/media/paper/architecture.webp" loading="lazy" width="1756" height="2294" alt="Two transformer blocks side by side, with patch features modulating the voxel-level attention and feedforward layers"><span class="expand-icon"><svg class="ic"><use href="#expand"/></svg></span></button><figcaption>Dual-granularity DiT architecture</figcaption></figure>
+      <div class="method-copy"><h3>Patch-level and Voxel-level DiT</h3><p>The patch-level DiT provides global semantic structure over sparse surface patches, while the voxel-level DiT restores local SDF variation within each patch. This dual-granularity design avoids applying expensive attention to all voxel tokens directly, yet still preserves the fine geometric detail needed for high-resolution shape generation.</p></div>
+    </div>
+  </div></section>
+  <section class="citation light" aria-labelledby="citation-title"><div class="shell citation-inner"><div><p class="eyebrow"><span></span>Citation</p><h2 id="citation-title">Cite this work<span class="accent-dot">.</span></h2><p>ACM Transactions on Graphics · Vol. 45, No. 6 · 2026</p></div><button type="button" class="btn citation-btn" id="cite-open"><svg class="ic"><use href="#file"/></svg>View BibTeX</button></div></section>
+</main>
+<footer><div class="shell footer-inner"><a class="wordmark" href="#top"><svg><use href="#cube"/></svg><span>Direct3D-V3</span></a><span class="footer-info">SIGGRAPH Asia 2026</span><a class="back" href="#top">Back to top<svg class="ic"><use href="#external"/></svg></a></div></footer>
+<dialog aria-labelledby="dialog-title" id="info-dialog" class="info-dialog"><div class="dialog-head"><h2 id="dialog-title">Paper</h2><button class="circle-close" id="dialog-close" type="button" aria-label="Close dialog"><svg class="ic"><use href="#close"/></svg></button></div><div class="dialog-body" id="dialog-body"></div></dialog>
+</body>
+</html>
