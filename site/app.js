@@ -13,7 +13,7 @@ const methods = [
 ];
 const $=id=>document.getElementById(id);
 const media=new URL('./media/',import.meta.url);
-const geometryRoot=new URL('https://raw.githubusercontent.com/DreamTechAI/Direct3D-V3/6579db016572a17e97d3e3dd5ede9a4a9d3825e5/');
+const geometryRoot=new URL('https://raw.githubusercontent.com/DreamTechAI/Direct3D-V3/project-page-meshes/');
 const input=(id,suffix='')=>new URL(`inputs/${id}${suffix}.webp`,media).href;
 const mesh=(id,method,extension)=>new URL(`meshes/${id}/${method}.${extension}`,media).href;
 const icon=(name,cl='ic')=>`<svg class="${cl}" aria-hidden="true"><use href="#${name}"/></svg>`;
