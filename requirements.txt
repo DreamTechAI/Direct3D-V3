@@ -4,7 +4,8 @@ numpy
 pillow
 trimesh>=4
 pyfqmr
-transformers>=4.56,<5
+transformers>=4.56
+diffusers>=0.41.0
 huggingface-hub>=0.34
 safetensors
 scikit-image>=0.22,<0.27

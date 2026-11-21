@@ -12,7 +12,7 @@ Shuang Wu<sup>1,2</sup>, Jiachen Qian<sup>2,3</sup>, Youtian Lin<sup>1</sup>, Fe
 <a href="" title="Demo link coming soon"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Demo-276cb4.svg" alt="Demo" height="22"></a>
 <a href="https://huggingface.co/wushuang98/Direct3D-V3"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Models-d96902.svg" alt="Models" height="22"></a>
 <a href="https://dl.acm.org/doi/10.1145/3842524"><img src="https://img.shields.io/badge/Paper-00629B.svg" alt="Paper" height="22"></a>
-<a href="" title="arXiv link coming soon"><img src="https://img.shields.io/badge/arXiv-b5212f.svg?logo=arxiv" alt="arXiv" height="22"></a>
+<a href="https://arxiv.org/abs/2611.26511"><img src="https://img.shields.io/badge/arXiv-b5212f.svg?logo=arxiv" alt="arXiv" height="22"></a>
 
 </div>
 
@@ -63,6 +63,8 @@ The paired images below, from `assets/input_imgs/`, illustrate the recommended *
 </table>
 
 Pass the prepared normal map or white clay image as `--image`, together with its aligned coarse mesh. For example, use `assets/input_imgs/0_normal.png` as the image path in the inference commands below.
+
+To remove surface textures from an RGB image before mesh generation, see [Texture removal with Qwen-Image-2.1](#texture-removal-with-qwen-image-21).
 
 ## Installation
 
@@ -135,6 +137,30 @@ mesh.export("generated.glb")
 
 If the final mesh exceeds `target_faces`, the pipeline uses pyfqmr to reduce its triangle count while preserving mesh boundaries. Pass `target_faces=None` to keep all faces.
 
+### Texture removal with Qwen-Image-2.1
+
+Alongside GPT Image 2.5 and Lotus-2, Qwen-Image-2.1 is another option for preparing reference images for Direct3D-V3. It removes surface colors and textures from the RGB input to produce an untextured clay render. This makes features such as grooves, bevels, and raised edges easier to distinguish, helping Direct3D-V3 reconstruct finer geometric detail. [Qwen license notes](#license)
+
+```python
+
+import torch
+from PIL import Image
+from pathlib import Path
+from direct3d import Direct3DV3Pipeline
+from diffusers import QwenImage21Pipeline
+
+editor = QwenImage21Pipeline.from_pretrained(
+    "Qwen/Qwen-Image-2.1", torch_dtype=torch.bfloat16
+).to("cuda")
+prompt = Path("assets/prompt.txt").read_text(encoding="utf-8").strip()
+with Image.open("assets/input_imgs/69.webp") as source:
+    edit_img = editor(image=source.convert("RGB"), prompt=prompt).images[0]
+
+pipeline = Direct3DV3Pipeline.from_pretrained("wushuang98/Direct3D-V3").to("cuda")
+mesh = pipeline(image=edit_img, coarse_mesh="assets/coarse_meshes/69.obj")
+mesh.export("generated.glb")
+```
+
 ### Command line
 
 ```bash
@@ -187,5 +213,7 @@ Open the URL printed by Gradio. Select an original image or its corresponding no
 ## License
 
 The Direct3D-V3 source is released under the MIT License. External weights and dependencies retain their respective licenses. [MIT License](LICENSE)
+
+Qwen-Image-2.1 is optional and used for image preprocessing. Its model and weights are licensed separately from the Direct3D-V3 source code. The Qwen license permits non-commercial research or evaluation. Commercial use of Qwen requires a separate license from its publisher. [Qwen Research License Agreement](https://huggingface.co/Qwen/Qwen-Image-2.1/blob/main/LICENSE)
 
 Hunyuan3D-2.1 and UltraShape-1.0 are linked as optional external tools. Their code and weights are not covered by Direct3D-V3's MIT license. Both repositories currently publish the Tencent Hunyuan 3D 2.1 Community License Agreement: [Hunyuan3D-2.1 license](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1/blob/main/LICENSE) and [UltraShape-1.0 license](https://github.com/PKU-YuanGroup/UltraShape-1.0/blob/main/LICENSE). Their terms apply when using those tools and their outputs, including territorial and commercial conditions and restrictions on using them to improve other AI models.
