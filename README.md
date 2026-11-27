@@ -47,21 +47,6 @@ Use the resulting OBJ, GLB, or PLY as `--coarse-mesh`, keeping its orientation a
 
 For richer geometric detail, we recommend preparing a **surface normal map or white clay image** from your RGB input with **ChatGPT (GPT Image 2.5)**. [Lotus-2](https://github.com/EnVision-Research/Lotus-2) is another option for predicting surface normal maps. Preserve the original viewpoint, silhouette, proportions, and as much fine geometry as possible, including small grooves, sharp edges, and thin structures. Detailed geometric cues in the conditioning image help Direct3D-V3 generate meshes with finer surface detail.
 
-The paired images below, from `assets/input_imgs/`, illustrate the recommended **RGB → GPT Image 2.5 → normal map** preparation workflow:
-
-<table>
-  <tr>
-    <th align="center">RGB input</th>
-    <th align="center">Image preparation</th>
-    <th align="center">Normal map</th>
-  </tr>
-  <tr>
-    <td align="center" width="40%"><img src="assets/input_imgs/49.png" alt="RGB reference of a robot with detailed mechanical parts" width="320"></td>
-    <td align="center" width="20%">→<br><strong>GPT Image 2.5</strong><br>Preserve fine<br>geometric details<br>→</td>
-    <td align="center" width="40%"><img src="assets/input_imgs/49_normal.png" alt="Paired robot normal map showing fine mechanical surface details" width="320"></td>
-  </tr>
-</table>
-
 Pass the prepared normal map or white clay image as `--image`, together with its aligned coarse mesh. For example, use `assets/input_imgs/0_normal.png` as the image path in the inference commands below.
 
 To remove surface textures from an RGB image before mesh generation, see [Texture removal with Qwen-Image-2.1](#texture-removal-with-qwen-image-21).
