@@ -45,9 +45,6 @@
 .paper-links { display: flex; gap: 18px; }
 #examples-strip { min-width: 0 !important; padding: 7px 0 2px; gap: 9px; }
 #examples-strip h2, .work-panel h2 { margin: 0; font: 600 23px/1.25 Georgia, serif; letter-spacing: -.025em; }
-#examples-strip .examples-heading { display: flex; align-items: baseline; gap: 4px 18px; }
-#examples-strip [role="note"] { margin: 0; color: var(--body-text-color); font-size: 15px; font-weight: 700; line-height: 1.5; }
-#examples-strip [role="note"] a { color: var(--link-text-color); text-decoration: underline; text-underline-offset: 2px; }
 #example-gallery { min-width: 0; border-radius: 10px; }
 #example-gallery .grid-wrap { min-height: 0 !important; height: auto !important; }
 #example-gallery .grid-container { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
@@ -69,20 +66,12 @@ direct3d-mesh-viewer { display: block; overflow: hidden; border: 1px solid var(-
 .viewer-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .viewer-stage canvas:active { cursor: grabbing; }
 .viewer-status { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 16px; pointer-events: none; color: #4a575d; font: 500 14px/1.5 system-ui,sans-serif; }
-.stage-bars { display: grid; gap: 7px; }
-.stage-bars label { display: grid; grid-template-columns: 4ch 1fr 9ch; align-items: center; gap: 10px; font: 13px/1.5 system-ui,sans-serif; font-variant-numeric: tabular-nums; }
-.stage-bars progress { width: 100%; height: 8px; accent-color: #397479; }
-.stage-bars span { text-align: right; }
 
 @media (max-width: 740px) {
-  #examples-strip .examples-heading { flex-direction: column; }
   .paper-info { max-width: 76%; padding: 22px; }
   .paper-banner::before { background: linear-gradient(90deg, #172a2d 30%, #172a2de8 65%, #172a2d22); }
   #example-gallery .grid-container { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
   #example-gallery .thumbnail-item { height: 96px; }
-  #example-gallery .grid-container > :nth-child(n+4):nth-child(-n+6) { order: 2; }
-  #example-gallery .grid-container > :nth-child(n+7):nth-child(-n+9) { order: 1; }
-  #example-gallery .grid-container > :nth-child(n+10) { order: 3; }
 }
 @media (max-width: 550px) {
   .paper-banner { min-height: 0; }

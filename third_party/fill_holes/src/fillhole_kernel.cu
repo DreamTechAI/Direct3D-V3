@@ -16,14 +16,14 @@ __device__ float compute_angle_score_device1(const float3& prev, const float3& c
 
     float theta = acosf(dot);
 
-    // 计算叉积
+    // Compute the cross product of the two edge vectors.
     float3 cross = {
         v1.y * v2.z - v1.z * v2.y,
         v1.z * v2.x - v1.x * v2.z,
         v1.x * v2.y - v1.y * v2.x
     };
 
-    // 判断凹凸角
+    // Use the loop normal to distinguish convex and reflex angles.
     float orient = cross.x * normal.x + cross.y * normal.y + cross.z * normal.z;
     if (orient < 0.0f) {
         theta = 2.0f * M_PI - theta;
@@ -45,7 +45,7 @@ __device__ float3 compute_oriented_loop_normal(
         const float3& v0 = vertices[vi];
         const float3& v1 = vertices[vj];
 
-        // 累加 v0 × v1
+        // Add the cross product of consecutive vertices to the loop normal.
         normal.x += v0.y * v1.z - v0.z * v1.y;
         normal.y += v0.z * v1.x - v0.x * v1.z;
         normal.z += v0.x * v1.y - v0.y * v1.x;
@@ -59,14 +59,14 @@ __device__ float3 compute_oriented_loop_normal(
 }
 
 __device__ bool edge_exists(int32_t u, int32_t v, const int64_t* edges_keys, int num_edges) {
-    // 将边标准化为 key
+    // Pack the endpoints into the same key for either edge direction.
     int64_t key = ((int64_t)min(u,v) << 32) | max(u,v);
 
     int left = 0;
     int right = num_edges - 1;
 
     while (left <= right) {
-        int mid = left + (right - left) / 2;  // 避免溢出
+        int mid = left + (right - left) / 2;  // Avoid overflow when computing the midpoint.
         uint64_t mid_key = edges_keys[mid];
 
         if (mid_key == key) return true;
@@ -98,8 +98,7 @@ __global__ void ear_clipping_batch_kernel(
     int remain = loop_len;
     int tris_count = 0;
     while (remain > 2) {
-            // 计算所有角度并排序找最小角度顶点
-            // 这里用简单的线性扫描实现
+            // Scan the remaining vertices for the lowest angle score.
             float min_angle = 1e9f;
             int min_idx = -1;
 
@@ -118,7 +117,7 @@ __global__ void ear_clipping_batch_kernel(
 
             }
 
-            // 输出三角形
+            // Emit the triangle formed by the selected vertex and its neighbors.
             int i_prev = loops_flat[loop_start+(min_idx - 1 + remain) % remain];
             int i_curr = loops_flat[loop_start+min_idx];
             int i_next = loops_flat[loop_start+(min_idx + 1) % remain];
@@ -129,7 +128,7 @@ __global__ void ear_clipping_batch_kernel(
             tris_out[out_idx + 2] = i_next;
             tris_count++;
 
-            // 删除顶点 (shift左移覆盖)
+            // Remove the selected vertex by shifting subsequent indices left.
             for (int i = min_idx; i < remain - 1; ++i) {
                 loops_flat[loop_start+i] = loops_flat[loop_start+i + 1];
             }
@@ -146,7 +145,7 @@ torch::Tensor triangulate_loops_cuda(
     TORCH_CHECK(vertices_cpu.device().is_cpu(), "vertices must be on CPU");
     TORCH_CHECK(vertices_cpu.size(1) == 3, "vertices must be Nx3");
 
-    // 展平 loops
+    // Flatten the loops and record each loop's offset and size.
     vector<int32_t> loops_flat;
     vector<int32_t> loop_offsets;
     vector<int32_t> loop_sizes;
@@ -162,7 +161,7 @@ torch::Tensor triangulate_loops_cuda(
         total_loops+=1;
     }
 
-    // 上传数据
+    // Copy the triangulation inputs to the GPU.
     auto vertices_gpu = vertices_cpu.to(torch::kCUDA).contiguous();
     auto verts_ptr = reinterpret_cast<float3*>(vertices_gpu.data_ptr<float>());
 
@@ -176,7 +175,7 @@ torch::Tensor triangulate_loops_cuda(
 
     int num_edges = edges_keys.size();
     int threads = 64;
-    // 启动 kernel
+    // Launch one thread per loop.
     ear_clipping_batch_kernel<<<(total_loops+ threads - 1)/threads, threads, 0, at::cuda::getCurrentCUDAStream()>>>(
         loops_flat_gpu.data_ptr<int32_t>(),
         loop_offsets_gpu.data_ptr<int32_t>(),

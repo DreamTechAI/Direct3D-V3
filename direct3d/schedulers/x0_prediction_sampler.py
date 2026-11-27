@@ -1,5 +1,5 @@
 import torch
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 
 @torch.inference_mode()
@@ -33,7 +33,7 @@ def sample_x0(
     timesteps = torch.linspace(0.0, 1.0, steps + 1, device=device)
     desc = "Diffusion sampling"
     if resolution is not None:
-        desc += f" resolution={resolution}"
+        desc = f"Sampling {resolution}³"
     for i in tqdm(range(steps), desc=f"{desc} shape={tuple(latents.shape)}"):
         t = timesteps[i]
         t_next = timesteps[i + 1]

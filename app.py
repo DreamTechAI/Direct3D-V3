@@ -1,64 +1,52 @@
 """Launch the Direct3D-V3 demo from the repository root with python app.py."""
 
 import argparse
-from concurrent.futures import CancelledError, ThreadPoolExecutor
 from pathlib import Path
-from queue import Queue
 from tempfile import TemporaryDirectory
-from threading import Event
 
 import gradio as gr
 from PIL import Image
 
 from direct3d import Direct3DV3Pipeline
 from direct3d.pipeline import DEFAULT_MAX_TOKENS, DEFAULT_MODEL_ID, DEFAULT_TARGET_FACES, RESOLUTIONS
+from direct3d.utils.inputs import DEFAULT_VECSHAPE_MODEL_ID, generate_coarse_mesh, load_vecshape
+from infer import generate_clay_render, load_qwen_editor
 
 ASSETS = Path(__file__).resolve().parent / "assets"
 TEASER = ASSETS / "demo" / "paper-teaser.webp"
 STYLES = ASSETS / "demo" / "app.css"
 VIEWER = ASSETS / "demo" / "mesh-viewer.js"
 GRADIO_MAJOR = int(gr.__version__.split(".")[0])
+EXAMPLE_IMAGES = (
+    "6.png", "44.png", "64.png", "69.webp", "88.png", "89.png",
+    "2.webp", "16.png", "41.png", "11.webp", "54.jpg", "75.jpg",
+)
 
 
-def build_demo(pipeline):
+def build_demo(pipeline, vecshape, *, editor=None):
     defaults = pipeline.sampling_defaults
-    examples = []
+    if editor is None:
+        print("Loading Qwen-Image-2.1-Turbo", flush=True)
+        editor = load_qwen_editor(pipeline.device)
+    examples = [ASSETS / "input_imgs" / name for name in EXAMPLE_IMAGES]
     thumbnails = []
-    meshes = sorted((ASSETS / "coarse_meshes").glob("*.obj"), key=lambda path: int(path.stem))
-    image_dir = ASSETS / "input_imgs"
-    for normal_map in (False, True):
-        for mesh in meshes:
-            if normal_map:
-                reference = image_dir / f"{mesh.stem}_normal.png"
-            else:
-                reference, = image_dir.glob(f"{mesh.stem}.*")
-            with Image.open(reference) as source:
-                thumb = source.convert("RGB")
-                thumb.thumbnail((256, 192), Image.Resampling.LANCZOS)
-            thumbnails.append(thumb)
-            examples.append((reference, mesh))
+    for path in examples:
+        with Image.open(path) as source:
+            source.thumbnail((256, 192), Image.Resampling.LANCZOS)
+            thumbnails.append(source.convert("RGBA"))
 
     def load_example(event: gr.SelectData):
-        reference, mesh = examples[event.index]
-        return str(reference), str(mesh), None, None, ""
-
-    def stage_bars(totals, completed):
-        rows = []
-        for stage, total in totals.items():
-            done = completed.get(stage, 0)
-            rows.append(
-                f'<label><b>{stage}³</b><progress max="{total}" value="{done}"></progress>'
-                f'<span>{done} / {total}</span></label>'
-            )
-        return '<div class="stage-bars" aria-label="Diffusion sampling progress">' + "".join(rows) + "</div>"
+        with Image.open(examples[event.index]) as source:
+            return source.copy(), None, None
 
     def generate(
-        image, coarse, resolution, seed, simplify, target_faces, max_tokens,
+        image, enhance, resolution, seed, simplify, target_faces, max_tokens,
         steps_512, cfg_512, steps_1024, cfg_1024, steps_1536, cfg_1536,
-        progress=gr.Progress(),
+        progress=gr.Progress(track_tqdm=True),
     ):
-        if image is None or coarse is None:
-            raise gr.Error("Select an example or upload both a reference image and an aligned coarse mesh.")
+        if image is None:
+            raise gr.Error("Upload an image or select an example.")
+        seed = int(seed)
         stage_steps = {}
         stage_cfg = {}
         for stage, count, cfg in (
@@ -72,47 +60,30 @@ def build_demo(pipeline):
             if cfg is not None:
                 stage_cfg[stage] = cfg
 
-        completed = {}
-        yield None, None, stage_bars(stage_steps, completed)
+        status = "Generating coarse mesh with VecShape…"
+        print(status, flush=True)
+        yield None, None
+        progress(None, desc=status)
+        coarse = generate_coarse_mesh(vecshape, image, seed)
+        reference = image
+        if enhance:
+            progress(None, desc="Generating clay render with Qwen-Image-2.1-Turbo")
+            reference = generate_clay_render(editor, image, seed, pipeline.device)
         progress(0, desc="Removing image background")
-        cutout = pipeline.remove_background(image)
-        yield cutout, gr.skip(), gr.skip()
-        events = Queue()
-        cancelled = Event()
-
-        def report(stage, done, total):
-            if cancelled.is_set():
-                raise CancelledError()
-            events.put((stage, done, total))
-
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            task = executor.submit(
-                pipeline, cutout, coarse, background_removed=True, resolution=resolution,
-                num_inference_steps=stage_steps, guidance_scale=stage_cfg, seed=int(seed),
-                target_faces=int(target_faces) if simplify else None, max_tokens=max_tokens,
-                on_sampling_step=report,
-            )
-            task.add_done_callback(lambda _: events.put(None))
-            try:
-                while (event := events.get()) is not None:
-                    stage, done, total = event
-                    completed[stage] = done
-                    if done == 0:
-                        progress(None, desc=f"Preparing {stage}³ geometry")
-                    elif done == total:
-                        progress(None, desc=f"Extracting {stage}³ mesh")
-                    else:
-                        progress((done, total), desc=f"Sampling {stage}³")
-                    yield gr.skip(), gr.skip(), stage_bars(stage_steps, completed)
-                mesh = task.result()
-            finally:
-                cancelled.set()
+        cutout = pipeline.remove_background(reference)
+        yield cutout, gr.skip()
+        progress(None, desc="Preparing Direct3D-V3 geometry")
+        mesh = pipeline(
+            cutout, coarse, background_removed=True, resolution=resolution,
+            num_inference_steps=stage_steps, guidance_scale=stage_cfg, seed=seed,
+            target_faces=int(target_faces) if simplify else None, max_tokens=max_tokens,
+        )
         progress(None, desc="Exporting GLB")
         with TemporaryDirectory(prefix="direct3d-") as directory:
             output = Path(directory) / "generated.glb"
             mesh.export(output)
             cached = download.move_resource_to_block_cache(output)
-        yield cutout, cached, stage_bars(stage_steps, completed)
+        yield gr.skip(), cached
 
     # Gradio 6 moved custom styles from Blocks to launch.
     block_style = {"css_paths": [STYLES]} if GRADIO_MAJOR < 6 else {}
@@ -130,6 +101,8 @@ def build_demo(pipeline):
               <p class="paper-authors">Shuang Wu, Jiachen Qian, Youtian Lin, Feihu Zhang,
                  Philip Torr, Yao Yao, and Xun Cao</p>
               <nav class="paper-links" aria-label="Project links">
+                <a class="paper-link" href="https://dreamtechai.github.io/Direct3D-V3/"
+                   target="_blank" rel="noopener noreferrer">Project Page ↗</a>
                 <a class="paper-link" href="https://dl.acm.org/doi/10.1145/3842524"
                    target="_blank" rel="noopener noreferrer">Paper ↗</a>
                 <a class="paper-link" href="https://github.com/DreamTechAI/Direct3D-V3"
@@ -140,16 +113,9 @@ def build_demo(pipeline):
         """, elem_id="paper-header")
 
         with gr.Column(elem_id="examples-strip"):
-            gr.HTML("""
-              <div class="examples-heading">
-                <h2>Examples</h2>
-                <p role="note">For a more detailed mesh, we recommend using GPT Image 2.5 or
-                  <a href="https://github.com/EnVision-Research/Lotus-2" target="_blank" rel="noopener noreferrer">Lotus-2</a>
-                  to convert your input image into a surface normal map or a white clay render that preserves fine geometric details.</p>
-              </div>
-            """)
+            gr.Markdown("## Examples")
             gallery = gr.Gallery(
-                thumbnails, label="Paired examples", show_label=False, columns=6, rows=2,
+                thumbnails, label="Example images", show_label=False, columns=6, rows=2,
                 height="auto", object_fit="contain", allow_preview=False, interactive=False,
                 format="webp", elem_id="example-gallery", **gallery_tools,
             )
@@ -159,16 +125,17 @@ def build_demo(pipeline):
                 gr.Markdown("## Inputs")
                 with gr.Row():
                     image = gr.Image(
-                        type="pil", label="Reference image", image_mode="RGBA", sources=["upload"],
+                        type="pil", label="Input image", image_mode=None, format="png", sources=["upload"],
                         height=192, min_width=125,
                     )
                     foreground = gr.Image(
-                        type="pil", label="Foreground", image_mode="RGBA", format="png",
+                        type="pil", label="Direct3D-V3 reference (background removed)", image_mode="RGBA", format="png",
                         interactive=False, height=192, min_width=125,
                     )
-                coarse = gr.File(
-                    file_types=[".obj", ".glb", ".ply"], type="filepath", label="Aligned coarse mesh",
-                    height=116,
+                enhance = gr.Checkbox(
+                    value=True, label="Enhance image with Qwen Turbo",
+                    info="Generate a white clay reference for Direct3D-V3. VecShape always uses the original image. "
+                         "[Qwen Research License](https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo/blob/main/LICENSE)",
                 )
                 resolution = gr.Radio(list(RESOLUTIONS), value=1024, label="Output resolution")
                 with gr.Accordion("Sampling and mesh options", open=False):
@@ -195,7 +162,6 @@ def build_demo(pipeline):
                         queue=False, show_progress="hidden", **ui_event,
                     )
                 submit = gr.Button("Generate", variant="primary", elem_id="generate-mesh")
-                stage_progress = gr.HTML("", elem_id="sampling-progress")
 
             with gr.Column(scale=7, min_width=300, variant="panel", elem_classes="work-panel"):
                 gr.Markdown("## Mesh viewer")
@@ -209,18 +175,18 @@ def build_demo(pipeline):
                 if (viewer) viewer.setAttribute("src", file?.url || "");
             }""", **ui_event,
         )
-        results = [foreground, download, stage_progress]
+        results = [foreground, download]
         job = submit.click(
-            generate, [image, coarse, resolution, seed, simplify, target_faces, max_tokens, *stage_inputs],
+            generate, [image, enhance, resolution, seed, simplify, target_faces, max_tokens, *stage_inputs],
             results, concurrency_limit=1, api_name="generate", show_progress_on=[download],
         )
         gallery.select(
-            load_example, outputs=[image, coarse, *results], cancels=[job],
+            load_example, outputs=[image, *results], cancels=[job],
             queue=False, show_progress="hidden", **ui_event,
         )
         gr.on(
-            triggers=[image.upload, image.clear, coarse.upload, coarse.clear],
-            fn=lambda: (None, None, ""), outputs=results, cancels=[job],
+            triggers=[image.upload, image.clear, enhance.input],
+            fn=lambda: (None, None), outputs=results, cancels=[job],
             queue=False, show_progress="hidden", **ui_event,
         )
     return demo
@@ -232,13 +198,18 @@ def main():
         "--model", default=DEFAULT_MODEL_ID,
         help="Hugging Face repository ID or local model directory (default: %(default)s)",
     )
+    parser.add_argument(
+        "--vecshape-model", default=DEFAULT_VECSHAPE_MODEL_ID,
+        help="VecShape Hub repository ID or local model directory (default: %(default)s)",
+    )
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=7860)
     args = parser.parse_args()
+    vecshape = load_vecshape(args.vecshape_model, args.device)
     pipeline = Direct3DV3Pipeline.from_pretrained(args.model).to(args.device)
     launch_style = {"css_paths": [STYLES]} if GRADIO_MAJOR >= 6 else {}
-    build_demo(pipeline).queue().launch(
+    build_demo(pipeline, vecshape).queue().launch(
         server_name=args.host, server_port=args.port, allowed_paths=[str(TEASER)], **launch_style,
     )
 

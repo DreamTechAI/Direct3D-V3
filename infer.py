@@ -1,32 +1,56 @@
 import argparse
 from pathlib import Path
 
+import torch
+from PIL import Image
+
 from direct3d import Direct3DV3Pipeline
 from direct3d.pipeline import DEFAULT_MAX_TOKENS, DEFAULT_MODEL_ID, DEFAULT_TARGET_FACES, RESOLUTIONS
+from direct3d.utils.inputs import DEFAULT_VECSHAPE_MODEL_ID, generate_coarse_mesh, load_vecshape
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 
 
+def load_qwen_editor(device):
+    from diffusers import QwenImage21Pipeline
+
+    editor = QwenImage21Pipeline.from_pretrained("Qwen/Qwen-Image-2.1-Turbo", torch_dtype=torch.bfloat16)
+    editor.enable_model_cpu_offload(device=device)
+    return editor
+
+
+def generate_clay_render(editor, image, seed, device):
+    prompt_path = Path(__file__).resolve().parent / "assets" / "prompt.txt"
+    prompt = prompt_path.read_text(encoding="utf-8").strip()
+    generator = torch.Generator(device=device).manual_seed(seed)
+    return editor(image=image, prompt=prompt, width=1280, height=1280, generator=generator).images[0]
+
+
 def input_pairs(image, coarse, output):
     if image.is_dir():
-        if not coarse.is_dir():
+        if coarse is not None and not coarse.is_dir():
             raise ValueError(
                 "For an image directory, supply a coarse mesh directory with matching .obj stems."
             )
         images = sorted(p for p in image.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS)
         if not images:
             raise ValueError(f"No images found in {image}")
-        pairs = [(p, coarse / f"{p.stem}.obj", output / f"{p.stem}.glb") for p in images]
+        pairs = [
+            (p, coarse / f"{p.stem}.obj" if coarse is not None else None, output / f"{p.stem}.glb")
+            for p in images
+        ]
     else:
         pairs = [(image, coarse, output)]
     outputs = set()
     for source, mesh, dest in pairs:
-        if not source.is_file() or not mesh.is_file():
-            raise FileNotFoundError(source if not source.is_file() else mesh)
+        if not source.is_file():
+            raise FileNotFoundError(source)
+        if mesh is not None and not mesh.is_file():
+            raise FileNotFoundError(mesh)
         if dest.suffix.lower() not in {".obj", ".glb", ".ply"}:
             raise ValueError("Choose an OBJ, GLB or PLY output filename.")
         resolved = dest.resolve()
-        if resolved in outputs or resolved in (mesh.resolve(), source.resolve()):
+        if resolved in outputs or resolved == source.resolve() or (mesh is not None and resolved == mesh.resolve()):
             raise ValueError(f"Conflicting output path: {dest}")
         outputs.add(resolved)
     return pairs
@@ -38,11 +62,21 @@ def main():
         "--model", help=f"Hugging Face repository ID or local model directory (default: {DEFAULT_MODEL_ID})",
     )
     parser.add_argument(
+        "--vecshape-model", default=DEFAULT_VECSHAPE_MODEL_ID,
+        help="VecShape Hub repository ID or local model directory for coarse mesh generation (default: %(default)s)",
+    )
+    parser.add_argument(
         "--checkpoint", type=Path, help="Run a single stage from a local safetensors checkpoint"
     )
     parser.add_argument("--image", "--infer_path", type=Path, required=True, help="Input image or directory")
     parser.add_argument(
-        "--coarse-mesh", type=Path, required=True, help="Coarse mesh or matching OBJ directory"
+        "--coarse-mesh", type=Path,
+        help="Use an aligned OBJ, GLB or PLY (or a matching OBJ directory) with the supplied image, skipping VecShape and Qwen",
+    )
+    parser.add_argument(
+        "--no-enhance", action="store_true",
+        help="Use the original image for Direct3D-V3. By default, when generating a coarse mesh, "
+             "Qwen-Image-2.1-Turbo produces a clay render under the Qwen Research License.",
     )
     parser.add_argument("--output", type=Path, help="Output mesh or batch output directory")
     parser.add_argument("--resolution", "--voxel_size", type=int, choices=RESOLUTIONS, default=1024)
@@ -50,14 +84,14 @@ def main():
         "--steps",
         nargs="+",
         type=int,
-        help="One step count for all stages or one per active stage in resolution order",
+        help="One step count for all Direct3D-V3 stages or one per active resolution in ascending order",
     )
     parser.add_argument(
         "--cfg",
         "--guidance-scale",
         nargs="+",
         type=float,
-        help="One CFG scale for all stages or one per active stage in resolution order",
+        help="One CFG scale for all Direct3D-V3 stages or one per active resolution in ascending order",
     )
     for stage in RESOLUTIONS:
         parser.add_argument(f"--steps-{stage}", type=int, help=f"Override the step count for {stage} only")
@@ -115,14 +149,24 @@ def main():
         pairs = input_pairs(args.image, args.coarse_mesh, output)
     except (ValueError, FileNotFoundError) as error:
         parser.error(str(error))
+    vecshape = load_vecshape(args.vecshape_model, args.device) if args.coarse_mesh is None else None
+    editor = load_qwen_editor(args.device) if vecshape is not None and not args.no_enhance else None
     if args.checkpoint is None:
         pipe = Direct3DV3Pipeline.from_pretrained(args.model or DEFAULT_MODEL_ID)
     else:
         pipe = Direct3DV3Pipeline.from_single_file(args.checkpoint, resolution=args.resolution, config_repo=args.model)
     pipe.to(args.device)
     for image, coarse, dest in pairs:
+        reference_image = image
+        if vecshape is not None:
+            print(f"Generating coarse mesh with VecShape: {image}", flush=True)
+            coarse = generate_coarse_mesh(vecshape, image, args.seed)
+        if editor is not None:
+            print(f"Generating clay render with Qwen-Image-2.1-Turbo: {image}", flush=True)
+            with Image.open(image) as original:
+                reference_image = generate_clay_render(editor, original, args.seed, args.device)
         result = pipe(
-            image,
+            reference_image,
             coarse,
             resolution=args.resolution,
             num_inference_steps=steps,
@@ -134,7 +178,7 @@ def main():
         )
         dest.parent.mkdir(parents=True, exist_ok=True)
         result.export(dest)
-        print(f"{dest} ({len(result.faces):,} triangles)")
+        print(f"{dest} ({len(result.faces):,} triangles)", flush=True)
 
 
 if __name__ == "__main__":

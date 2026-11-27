@@ -35,6 +35,8 @@ class Direct3DV3Pipeline:
     def __init__(
         self, repo, *, image_encoder, torch_dtype, revision, local_files_only, stages=RESOLUTIONS, checkpoint=None
     ):
+        from .models.image_encoder import DINOv3FeatureExtractor
+
         if torch_dtype not in (torch.float16, torch.bfloat16):
             raise ValueError("torch_dtype must be torch.float16 or torch.bfloat16.")
         local = Path(repo).expanduser()
@@ -50,7 +52,7 @@ class Direct3DV3Pipeline:
             # Earlier releases load model_index.json directly.
             config = {}
         index = self._read_config(config.get("model_index", "model_index.json"))
-        self._encoder_options = (
+        encoder_options = (
             self._image_encoder_options(index)
             if image_encoder is None
             else {"model_name_or_path": image_encoder}
@@ -58,7 +60,9 @@ class Direct3DV3Pipeline:
         self._denoisers = {
             stage: self._load_stage(stage, index[f"shape_transformers_{stage}"], checkpoint) for stage in stages
         }
-        self._encoder = None
+        self._encoder = DINOv3FeatureExtractor(
+            **encoder_options, dtype=self.dtype, local_files_only=self.local_files_only
+        )
         self._remover = None
 
     @classmethod
@@ -210,14 +214,6 @@ class Direct3DV3Pipeline:
         mesh = load_coarse(coarse_mesh)
         if self.device.type == "cpu":
             self.to("cuda")
-        if self._encoder is None:
-            from .models.image_encoder import DINOv3FeatureExtractor
-
-            self._encoder = DINOv3FeatureExtractor(
-                **self._encoder_options,
-                dtype=self.dtype,
-                local_files_only=self.local_files_only,
-            )
         with torch.cuda.device(self.device):
             foreground = image if background_removed else self.remove_background(image)
             pixels = prepare_image(foreground)

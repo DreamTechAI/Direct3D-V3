@@ -31,12 +31,12 @@ __device__ bool overlapIntervals(float min1, float max1, float min2, float max2)
     return !(min1 > max2 || max1 < min2);
 }
 
-// 计算向量绝对值
+// Take the absolute value of each vector component.
 __device__ Point3D absVec(const Point3D& v) {
     return {fabsf(v.x), fabsf(v.y), fabsf(v.z)};
 }
 
-// 根据轴投影三角形顶点，返回区间[min_proj, max_proj]
+// Project the triangle vertices onto the axis to find the interval [min_proj, max_proj].
 __device__ void projectTriangle(const Point3D tri[3], const Point3D& axis, float& min_proj, float& max_proj) {
     float p0 = dot(tri[0], axis);
     float p1 = dot(tri[1], axis);
@@ -45,9 +45,9 @@ __device__ void projectTriangle(const Point3D tri[3], const Point3D& axis, float
     max_proj = fmaxf(p0, fmaxf(p1, p2));
 }
 
-// 判断三角形和立方体在 axis 轴上是否投影重叠
+// Check whether the triangle and cube projections overlap on this axis.
 __device__ bool overlapOnAxis(const Point3D tri[3], const Point3D& box_half, const Point3D& axis) {
-    // 跳过零向量
+    // A zero vector cannot define a separating axis.
     if (axis.x == 0 && axis.y == 0 && axis.z == 0) return true;
 
     float min_proj, max_proj;
@@ -62,37 +62,37 @@ __device__ bool triangleIntersectsCube(const Triangle& tri, const Point3D& cube_
     Point3D box_center = {cube_min.x + 0.5f/(DIM-1), cube_min.y + 0.5f/(DIM-1), cube_min.z + 0.5f/(DIM-1)};
     Point3D box_half = {0.5f/(DIM-1), 0.5f/(DIM-1), 0.5f/(DIM-1)};
 
-    // 将三角形顶点移到立方体局部坐标系
+    // Express the triangle vertices relative to the cube center.
     Point3D tv[3];
     tv[0] = subtract(tri.v0, box_center);
     tv[1] = subtract(tri.v1, box_center);
     tv[2] = subtract(tri.v2, box_center);
 
-    // 三角形边向量
+    // Triangle edge vectors.
     Point3D e0 = subtract(tv[1], tv[0]);
     Point3D e1 = subtract(tv[2], tv[1]);
     Point3D e2 = subtract(tv[0], tv[2]);
 
-    // 13个分离轴
+    // The 13 candidate separating axes.
     Point3D axes[13] = {
-        // 立方体的3个轴
+        // Three cube axes.
         {1, 0, 0}, {0, 1, 0}, {0, 0, 1},
-        // 三角形法线
+        // Triangle normal.
         cross(e0, e1),
-        // 边和立方体轴的叉积（9个）
+        // Nine cross products of triangle edges and cube axes.
         {0, -e0.z, e0.y}, {0, -e1.z, e1.y}, {0, -e2.z, e2.y},
         {e0.z, 0, -e0.x}, {e1.z, 0, -e1.x}, {e2.z, 0, -e2.x},
         {-e0.y, e0.x, 0}, {-e1.y, e1.x, 0}, {-e2.y, e2.x, 0}
     };
 
-    // 测试13个轴是否分离
+    // Check each candidate for separation.
     for (int i = 0; i < 13; ++i) {
         if (!overlapOnAxis(tv, box_half, axes[i])) {
-            return false; // 存在分离轴，三角形与立方体不相交
+            return false; // This axis separates the triangle from the cube.
         }
     }
 
-    return true; // 所有轴都有重叠，说明相交
+    return true; // Overlap on every axis implies intersection.
 }
 
 __device__ void updateSDF(Triangle t, bool* voxel, const int DIM, const float threshold) {
