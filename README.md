@@ -9,7 +9,7 @@ Shuang Wu<sup>1,2</sup>, Jiachen Qian<sup>2,3</sup>, Youtian Lin<sup>1</sup>, Fe
 <sup>1</sup>Nanjing University &nbsp; <sup>2</sup>DreamTech &nbsp; <sup>3</sup>The University of Hong Kong &nbsp; <sup>4</sup>University of Oxford
 
 <a href="https://dreamtechai.github.io/Direct3D-V3"><img src="https://img.shields.io/badge/Project%20Page-333399.svg?logo=googlehome" alt="Project Page" height="22"></a>
-<a href="" title="Demo link coming soon"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Demo-276cb4.svg" alt="Demo" height="22"></a>
+<a href="https://huggingface.co/spaces/wushuang98/Direct3D-V3"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Demo-276cb4.svg" alt="Demo" height="22"></a>
 <a href="https://huggingface.co/wushuang98/Direct3D-V3"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Models-d96902.svg" alt="Models" height="22"></a>
 <a href="https://dl.acm.org/doi/10.1145/3842524"><img src="https://img.shields.io/badge/Paper-00629B.svg" alt="Paper" height="22"></a>
 <a href="https://arxiv.org/abs/2611.26511"><img src="https://img.shields.io/badge/arXiv-b5212f.svg?logo=arxiv" alt="arXiv" height="22"></a>
